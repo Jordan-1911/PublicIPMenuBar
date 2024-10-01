@@ -9,74 +9,109 @@ import Cocoa
 import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-  var statusItem: NSStatusItem!
-  var timer: Timer?
-  var proxySettingsWindowController: NSWindowController?
+    var statusItem: NSStatusItem!
+    var timer: Timer?
+    var proxySettingsWindowController: NSWindowController?
+    var lastAPICallTime: Date?
 
-  func applicationDidFinishLaunching(_ notification: Notification) {
-    setupStatusItem()
-    startUpdatingIP()
-  }
-
-  func setupStatusItem() {
-    statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    statusItem.button?.title = "Loading..."
-
-    // Create the menu
-    let menu = NSMenu()
-
-    // Add menu items
-    menu.addItem(
-      NSMenuItem(
-        title: "Configure Proxy Settings", action: #selector(showProxySettings), keyEquivalent: ""))
-    menu.addItem(NSMenuItem.separator())
-    menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
-
-    statusItem.menu = menu
-  }
-
-  func startUpdatingIP() {
-    fetchIP()
-    timer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { _ in
-      self.fetchIP()
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        setupStatusItem()
+        startUpdatingIP()
     }
-  }
 
-  func fetchIP() {
-    let url = URL(string: "https://api64.ipify.org?format=json")!
-    let task = URLSession.shared.dataTask(with: url) { data, response, error in
-      if let error = error {
-        DispatchQueue.main.async {
-          self.statusItem.button?.title = "Error"
-        }
-        print("Error fetching IP: \(error)")
-        return
-      }
+    func setupStatusItem() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem.button?.title = "Loading..."
 
-      guard let data = data else {
-        DispatchQueue.main.async {
-          self.statusItem.button?.title = "No Data"
-        }
-        return
-      }
+        // Create the menu
+        let menu = NSMenu()
 
-      do {
-        if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-          let ip = json["ip"] as? String
-        {
-          DispatchQueue.main.async {
-            self.statusItem.button?.title = ip
-          }
+        // Add menu items
+        menu.addItem(NSMenuItem(title: "Last API Call: Never", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Configure Proxy Settings", action: #selector(showProxySettings), keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
+
+        statusItem.menu = menu
+
+        // Start a timer to update the "Last API Call" menu item
+        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            self.updateLastAPICallMenuItem()
         }
-      } catch {
-        DispatchQueue.main.async {
-          self.statusItem.button?.title = "Parse Error"
-        }
-        print("Error parsing JSON: \(error)")
-      }
     }
-    task.resume()
-  }
+
+    func startUpdatingIP() {
+        fetchIP()
+        timer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { _ in
+            self.fetchIP()
+        }
+    }
+
+    func fetchIP() {
+        let url = URL(string: "https://api64.ipify.org?format=json")!
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.statusItem.button?.title = "Error"
+                }
+                print("Error fetching IP: \(error)")
+                return
+            }
+
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    self.statusItem.button?.title = "No Data"
+                }
+                return
+            }
+
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                   let ip = json["ip"] as? String
+                {
+                    DispatchQueue.main.async {
+                        self.statusItem.button?.title = ip
+                        self.lastAPICallTime = Date()
+                        self.updateLastAPICallMenuItem()
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.statusItem.button?.title = "Parse Error"
+                }
+                print("Error parsing JSON: \(error)")
+            }
+        }
+        task.resume()
+    }
+
+    func updateLastAPICallMenuItem() {
+        guard let menu = statusItem.menu,
+              let lastCallItem = menu.item(at: 0) else { return }
+
+        if let lastCallTime = lastAPICallTime {
+            let timeSinceLastCall = formatTimeDifference(from: lastCallTime)
+            lastCallItem.title = "Last API Call: \(timeSinceLastCall) ago"
+        } else {
+            lastCallItem.title = "Last API Call: Never"
+        }
+    }
+
+    func formatTimeDifference(from date: Date) -> String {
+        let difference = Int(Date().timeIntervalSince(date))
+        
+        if difference < 60 {
+            return "\(difference) second\(difference == 1 ? "" : "s")"
+        } else if difference < 3600 {
+            let minutes = difference / 60
+            return "\(minutes) minute\(minutes == 1 ? "" : "s")"
+        } else {
+            let hours = difference / 3600
+            let minutes = (difference % 3600) / 60
+            return "\(hours) hour\(hours == 1 ? "" : "s") \(minutes) minute\(minutes == 1 ? "" : "s")"
+        }
+    }
 
   @objc func showProxySettings() {
     if proxySettingsWindowController == nil {
