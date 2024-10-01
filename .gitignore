@@ -1,0 +1,58 @@
+# Xcode
+#
+# Ignore build products and intermediate files.
+DerivedData/
+Build/
+*.xcworkspace
+
+# Ignore personal Xcode settings
+xcuserdata/
+*.xcuserstate
+
+# Ignore scheme files (if not shared)
+*.xcscheme
+
+# Ignore module cache
+ModuleCache.noindex/
+
+# Ignore playground intermediate files
+timeline.xctimeline
+playground.xcplaygroundpage
+
+# Ignore Swift Package Manager artifacts
+.build/
+.swiftpm/
+Package.resolved
+
+# Ignore Carthage build directory
+Carthage/Build/
+
+# Ignore CocoaPods dependencies
+Pods/
+
+# Ignore fastlane artifacts
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore logs
+*.log
+
+# Ignore custom user environment files
+.env.local
+.env.*.local
+
+# Exclude Test Directories
+PublicIPMenuBarTests/
+PublicIPMenuBarUITests/
+
+# Ignore any files ending with ~
+*~
+
+# Ignore DS_Store (macOS metadata files)
+.DS_Store
