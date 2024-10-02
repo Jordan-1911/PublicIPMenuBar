@@ -5,14 +5,16 @@
 //  Created by jw on 9/30/24.
 //
 
-import Cocoa
 import SwiftUI
+import Cocoa
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     var timer: Timer?
     var proxySettingsWindowController: NSWindowController?
     var lastAPICallTime: Date?
+    var currentIP: String?
+    var initialIP: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -21,7 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "Loading..."
+        updateStatusItemTitle(title: "Loading...", color: .gray)
 
         // Create the menu
         let menu = NSMenu()
@@ -53,7 +55,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let task = URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 DispatchQueue.main.async {
-                    self.statusItem.button?.title = "Error"
+                    self.updateStatusItemTitle(title: "Error", color: .red)
                 }
                 print("Error fetching IP: \(error)")
                 return
@@ -61,7 +63,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             guard let data = data else {
                 DispatchQueue.main.async {
-                    self.statusItem.button?.title = "No Data"
+                    self.updateStatusItemTitle(title: "No Data", color: .red)
                 }
                 return
             }
@@ -71,19 +73,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                    let ip = json["ip"] as? String
                 {
                     DispatchQueue.main.async {
-                        self.statusItem.button?.title = ip
+                        self.updateIPStatus(ip: ip)
                         self.lastAPICallTime = Date()
                         self.updateLastAPICallMenuItem()
                     }
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self.statusItem.button?.title = "Parse Error"
+                    self.updateStatusItemTitle(title: "Parse Error", color: .red)
                 }
                 print("Error parsing JSON: \(error)")
             }
         }
         task.resume()
+    }
+
+    func updateIPStatus(ip: String) {
+        if initialIP == nil {
+            initialIP = ip
+            updateStatusItemTitle(title: ip, color: .green)
+        } else if ip != currentIP {
+            updateStatusItemTitle(title: ip, color: .orange)
+        } else {
+            updateStatusItemTitle(title: ip, color: .green)
+        }
+        currentIP = ip
+    }
+
+    func updateStatusItemTitle(title: String, color: NSColor) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: color,
+            .font: NSFont.menuBarFont(ofSize: 0)
+        ]
+        statusItem.button?.attributedTitle = NSAttributedString(string: title, attributes: attributes)
     }
 
     func updateLastAPICallMenuItem() {
